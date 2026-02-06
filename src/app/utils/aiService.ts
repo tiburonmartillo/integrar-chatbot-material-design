@@ -44,6 +44,7 @@ if (import.meta.env.DEV) {
 
 // Sistema de prompts base
 const BASE_SYSTEM_PROMPT = `Eres un asistente de IA para una plataforma que sigue los principios de Material Design 3. 
+Sé tolerante con la ortografía y los errores de escritura: interpreta la intención del usuario aunque escriba con faltas, typos o abreviaturas.
 Debes responder de manera clara, concisa y útil. Cuando proporciones información sobre diseño:
 
 - Prioriza la accesibilidad y los estándares WCAG
