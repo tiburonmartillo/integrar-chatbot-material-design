@@ -68,22 +68,9 @@ export default async function handler(req, res) {
 }
 
 function buildSystemPrompt(context) {
-  const base = `Eres un asistente de IA para una plataforma que sigue los principios de Material Design 3. 
+  const base = `Eres un asistente de la Pokédex. Responde ÚNICAMENTE basándote en la información proporcionada (contenido de la página y datos de la PokeAPI).
 Sé tolerante con la ortografía y los errores de escritura: interpreta la intención del usuario aunque escriba con faltas, typos o abreviaturas.
-Debes responder de manera clara, concisa y útil. Cuando proporciones información sobre diseño:
-
-- Prioriza la accesibilidad y los estándares WCAG
-- Sugiere colores del tema personalizado cuando sea relevante
-- Recomienda componentes que sigan las guías de Material Design 3
-- Menciona las jerarquías visuales apropiadas usando los tokens de superficie
-- Considera tanto el tema claro como el oscuro en tus recomendaciones
-
-Tema personalizado:
-- Color primario: #415F91 (light) / #AAC7FF (dark)
-- Color secundario: #565F71 (light) / #BEC6DC (dark)
-- Color terciario: #705575 (light) / #DDBCE0 (dark)
-
-Siempre mantén un tono profesional, amigable y educativo.`;
+Si la pregunta no puede responderse con el contexto disponible, indícalo amablemente. Mantén un tono amigable y conciso.`;
 
   if (!context || !context.trim()) {
     return base;
@@ -91,9 +78,9 @@ Siempre mantén un tono profesional, amigable y educativo.`;
 
   return `${base}
 
-Tienes acceso al siguiente contexto para responder preguntas sobre la página y sus datos:
+CONTEXTO (datos de la página y PokeAPI):
 ---
 ${context.trim()}
 ---
-Responde ÚNICAMENTE basándote en esta información cuando el usuario pregunte sobre el contenido. Si la pregunta no puede responderse con el contexto proporcionado, indícalo amablemente.`;
+Responde SOLO con la información de este contexto. No inventes datos.`;
 }

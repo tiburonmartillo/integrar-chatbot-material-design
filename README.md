@@ -11,8 +11,7 @@
 
   ## Páginas disponibles
 
-  - `/` - Chatbot principal (Material Design 3)
-  - `/pokemon.html` - Pokédex con PokeAPI y chatbot incrustado
+  - `/` y `/pokemon.html` - Pokédex con datos de PokeAPI y chatbot (solo usa info de la página)
   - `/embed.html` - Widget del chatbot (para incrustar en iframe)
 
   ## Desplegar en Vercel
