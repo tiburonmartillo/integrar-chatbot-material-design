@@ -25,7 +25,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Se requiere un array de messages' });
     }
 
-    const systemPrompt = buildSystemPrompt(context);
+    const lastUserMessage = messages.filter((m) => m.role === 'user').pop()?.content || '';
+    const filteredContext = filterContextByMentionedPokemon(context, lastUserMessage);
+
+    const systemPrompt = buildSystemPrompt(filteredContext);
     const groqMessages = [
       { role: 'system', content: systemPrompt },
       ...messages,
@@ -67,8 +70,39 @@ export default async function handler(req, res) {
   }
 }
 
-// Límite para no exceder tokens de Groq (llama-3.1-8b: ~6K tokens/request)
-const MAX_CONTEXT_CHARS = 12000;
+// Límite para no exceder tokens de Groq (llama-3.1-8b: 6K TPM)
+const MAX_CONTEXT_CHARS = 9000;
+
+/**
+ * Filtra el contexto para incluir solo los Pokémon mencionados en el mensaje del usuario.
+ * Reduce tokens cuando la pregunta es sobre Pokémon específicos.
+ */
+function filterContextByMentionedPokemon(context, userMessage) {
+  if (!context || !context.trim()) return context;
+
+  const lines = context.trim().split('\n');
+  const headerLines = lines.slice(0, 2); // "POKÉDEX..." y línea vacía
+  const pokemonLines = lines.slice(2).filter((l) => l.startsWith('#'));
+
+  if (pokemonLines.length === 0) return context;
+
+  const msg = userMessage.toLowerCase().replace(/[.-]/g, ' ');
+
+  const pokemonWithNames = pokemonLines.map((line) => {
+    const match = line.match(/^#\d+\s+([^|]+)\|/);
+    const name = match ? match[1].trim().toLowerCase().replace(/-/g, ' ') : '';
+    return { line, name };
+  });
+
+  const mentioned = pokemonWithNames.filter(({ name }) => name && msg.includes(name));
+
+  if (mentioned.length === 0) {
+    return context;
+  }
+
+  const filtered = [...headerLines, '', ...mentioned.map((m) => m.line)].join('\n');
+  return filtered;
+}
 
 function buildSystemPrompt(context) {
   const base = `Eres un asistente de la Pokédex. Responde ÚNICAMENTE basándote en la información proporcionada (contenido de la página y datos de la PokeAPI).

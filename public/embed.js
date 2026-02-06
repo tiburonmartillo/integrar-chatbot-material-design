@@ -36,6 +36,11 @@
   function setOpen(open) {
     isOpen = open;
     iframe.style.display = isOpen ? 'block' : 'none';
+    if (isOpen && iframe.contentWindow) {
+      setTimeout(function () {
+        iframe.contentWindow.postMessage({ type: 'CHATBOT_FOCUS_INPUT' }, '*');
+      }, 300);
+    }
     // Ocultar completamente el botón cuando el chat está abierto
     button.style.display = isOpen ? 'none' : 'flex';
     button.style.visibility = isOpen ? 'hidden' : 'visible';

@@ -42,8 +42,34 @@ if (import.meta.env.DEV) {
   console.log('[AI] Provider:', API_CONFIG.provider, '| Endpoint:', API_CONFIG.endpoint);
 }
 
-// Límite de contexto para no exceder tokens de Groq (llama-3.1-8b: ~6K tokens/request)
-const MAX_CONTEXT_CHARS = 12000; // ~3000 tokens, deja margen para prompt + mensajes
+// Límite de contexto para no exceder tokens de Groq (llama-3.1-8b: 6K TPM)
+const MAX_CONTEXT_CHARS = 9000;
+
+/**
+ * Filtra el contexto para incluir solo los Pokémon mencionados en el mensaje.
+ * Reduce tokens cuando la pregunta es sobre Pokémon específicos.
+ */
+function filterContextByMentionedPokemon(context: string | undefined, userMessage: string): string | undefined {
+  if (!context?.trim()) return context;
+
+  const lines = context.trim().split('\n');
+  const headerLines = lines.slice(0, 2);
+  const pokemonLines = lines.slice(2).filter((l) => l.startsWith('#'));
+
+  if (pokemonLines.length === 0) return context;
+
+  const msg = userMessage.toLowerCase().replace(/[.-]/g, ' ').replace(/\s+/g, ' ');
+
+  const mentioned = pokemonLines.filter((line) => {
+    const match = line.match(/^#\d+\s+([^|]+)\|/);
+    const name = match ? match[1].trim().toLowerCase().replace(/-/g, ' ') : '';
+    return name && msg.includes(name);
+  });
+
+  if (mentioned.length === 0) return context;
+
+  return [...headerLines, '', ...mentioned].join('\n');
+}
 
 // Prompt para el asistente de la Pokédex: solo usa info de la página y PokeAPI
 const BASE_SYSTEM_PROMPT = `Eres un asistente de la Pokédex. Responde ÚNICAMENTE basándote en la información proporcionada (contenido de la página y datos de la PokeAPI).
@@ -92,7 +118,9 @@ async function sendToAPI(messages: ChatMessage[], context?: string): Promise<str
   }
 
   // Llamada directa (dev con proxy o OpenAI)
-  const systemPrompt = buildSystemPrompt(context);
+  const lastUserMsg = messages.filter((m) => m.role === 'user').pop()?.content ?? '';
+  const filteredContext = filterContextByMentionedPokemon(context, lastUserMsg);
+  const systemPrompt = buildSystemPrompt(filteredContext);
   const response = await fetch(API_CONFIG.endpoint, {
     method: 'POST',
     headers: {
@@ -135,7 +163,9 @@ export async function sendMessage(messages: ChatMessage[], context?: string): Pr
   }
 
   try {
-    return await sendToAPI(messages, context);
+    const lastUserMsg = messages.filter((m) => m.role === 'user').pop()?.content ?? '';
+    const filteredContext = filterContextByMentionedPokemon(context, lastUserMsg);
+    return await sendToAPI(messages, filteredContext);
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error(`Error calling ${API_CONFIG.provider} API:`, error);

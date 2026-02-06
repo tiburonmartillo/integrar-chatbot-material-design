@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent } from 'react';
+import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { Box, IconButton, TextField, CircularProgress } from '@mui/material';
 import { Send } from 'lucide-react';
 
@@ -6,9 +6,20 @@ interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
   loading?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+  autoFocus?: boolean;
 }
 
-export function ChatInput({ onSendMessage, disabled = false, loading = false }: ChatInputProps) {
+export function ChatInput({ onSendMessage, disabled = false, loading = false, inputRef: externalInputRef, autoFocus = false }: ChatInputProps) {
+  const internalInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const inputRef = externalInputRef ?? internalInputRef;
+
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      const t = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [autoFocus, inputRef]);
   const [message, setMessage] = useState('');
 
   const handleSend = () => {
@@ -38,6 +49,7 @@ export function ChatInput({ onSendMessage, disabled = false, loading = false }: 
       }}
     >
       <TextField
+        inputRef={inputRef}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyPress}

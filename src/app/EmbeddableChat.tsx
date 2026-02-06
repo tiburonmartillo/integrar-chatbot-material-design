@@ -27,6 +27,7 @@ export function EmbeddableChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [context, setContext] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
     initContextListener();
@@ -40,6 +41,16 @@ export function EmbeddableChat() {
     });
 
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'CHATBOT_FOCUS_INPUT') {
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   useEffect(() => {
@@ -123,7 +134,7 @@ export function EmbeddableChat() {
               <Bot size={24} />
             </Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
-              Asistente
+              Pokechatbot
             </Typography>
           </Box>
           <IconButton
@@ -156,7 +167,13 @@ export function EmbeddableChat() {
         </Box>
 
         <Box sx={{ flexShrink: 0 }}>
-          <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} loading={isTyping} />
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            disabled={isTyping}
+            loading={isTyping}
+            inputRef={inputRef}
+            autoFocus={typeof window !== 'undefined' && window.parent === window}
+          />
         </Box>
       </Box>
     </ThemeProvider>
