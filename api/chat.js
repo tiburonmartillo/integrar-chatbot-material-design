@@ -34,33 +34,51 @@ export default async function handler(req, res) {
       ...messages,
     ];
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: groqMessages,
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
-    });
+    let response;
+    let lastError;
+    const maxRetries = 2;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Groq API error:', response.status, errText);
-      return res.status(response.status).json({
-        error: `Groq API error: ${response.status}`,
-        details: errText,
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: groqMessages,
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        return res.status(200).json({ content: data.choices?.[0]?.message?.content ?? '' });
+      }
+
+      const errText = await response.text();
+      lastError = errText;
+
+      if (response.status === 429 && attempt < maxRetries) {
+        const retryAfter = parseInt(response.headers.get('retry-after') || '30', 10);
+        const waitSec = Math.min(retryAfter, 60);
+        console.warn(`Groq 429, reintentando en ${waitSec}s (intento ${attempt + 1}/${maxRetries})`);
+        await new Promise((r) => setTimeout(r, waitSec * 1000));
+        continue;
+      }
+
+      break;
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content ?? '';
-
-    return res.status(200).json({ content });
+    const is429 = response?.status === 429;
+    return res.status(response?.status || 500).json({
+      error: is429
+        ? 'Límite de solicitudes alcanzado. Espera un minuto e intenta de nuevo.'
+        : `Groq API error: ${response?.status || 500}`,
+      details: lastError,
+    });
   } catch (error) {
     console.error('Chat API error:', error);
     return res.status(500).json({

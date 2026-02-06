@@ -111,7 +111,11 @@ async function sendToAPI(messages: ChatMessage[], context?: string): Promise<str
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(err.error || err.details || `API error: ${response.status}`);
+      const msg = err.error || err.details || `API error: ${response.status}`;
+      if (response.status === 429) {
+        throw new Error('Límite de solicitudes alcanzado. Espera un minuto e intenta de nuevo.');
+      }
+      throw new Error(msg);
     }
     const data = await response.json();
     return data.content ?? '';
