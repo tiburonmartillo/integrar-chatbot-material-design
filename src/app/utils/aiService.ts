@@ -3,23 +3,44 @@
 /**
  * CONFIGURACIÓN DE API
  *
- * OpenAI API (usa fetch, sin paquetes extra):
- *   - Obtén tu API key en: https://platform.openai.com/api-keys
- *   - Configura VITE_OPENAI_API_KEY en .env.local o reemplaza abajo
+ * En Vercel (producción):
+ *   - Usa /api/chat (serverless function). La API key va en Vercel → Settings → Environment Variables (GROQ_API_KEY)
+ *   - No expones la key en el frontend
  *
- * IMPORTANTE:
- * - Nunca expongas API keys en código frontend en producción
- * - Usa variables de entorno o un backend proxy
+ * En desarrollo local:
+ *   - Usa proxy de Vite. Configura VITE_GROQ_API_KEY en .env.local
+ *
+ * OpenAI (alternativa local):
+ *   - Configura VITE_OPENAI_API_KEY en .env.local
  */
 
-// Configuración de OpenAI (REST API vía fetch)
-const API_CONFIG = {
-  openai: {
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY ?? 'YOUR_OPENAI_API_KEY_HERE',
-    endpoint: 'https://api.openai.com/v1/chat/completions',
-    model: 'gpt-4o-mini',
-  },
+// En producción (Vercel): usar nuestra API route. En desarrollo: proxy de Vite o directo
+const USE_VERCEL_API = !import.meta.env.DEV; // En build de producción, usar /api/chat
+
+const GROQ_CONFIG = {
+  apiKey: import.meta.env.VITE_GROQ_API_KEY ?? '',
+  endpoint: USE_VERCEL_API ? '/api/chat' : '/api/groq/openai/v1/chat/completions',
+  model: 'llama-3.1-8b-instant',
+  useVercelApi: USE_VERCEL_API,
 };
+
+const OPENAI_CONFIG = {
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY ?? 'YOUR_OPENAI_API_KEY_HERE',
+  endpoint: 'https://api.openai.com/v1/chat/completions',
+  model: 'gpt-4o-mini',
+  useVercelApi: false,
+};
+
+// En producción con Vercel: siempre usar Groq vía /api/chat (no necesita key en frontend)
+// En desarrollo: Groq si tiene key, sino OpenAI
+const useGroq = USE_VERCEL_API || Boolean(GROQ_CONFIG.apiKey?.trim());
+const API_CONFIG = useGroq
+  ? { provider: 'groq' as const, ...GROQ_CONFIG }
+  : { provider: 'openai' as const, ...OPENAI_CONFIG };
+
+if (import.meta.env.DEV) {
+  console.log('[AI] Provider:', API_CONFIG.provider, '| Endpoint:', API_CONFIG.endpoint);
+}
 
 // Sistema de prompts base
 const BASE_SYSTEM_PROMPT = `Eres un asistente de IA para una plataforma que sigue los principios de Material Design 3. 
@@ -57,18 +78,34 @@ export interface ChatMessage {
 }
 
 /**
- * Envía un mensaje a la API de OpenAI (REST vía fetch, sin SDK)
+ * Envía un mensaje a la API (Vercel /api/chat, Groq directo, u OpenAI)
  */
-async function sendToOpenAI(messages: ChatMessage[], context?: string): Promise<string> {
+async function sendToAPI(messages: ChatMessage[], context?: string): Promise<string> {
+  if (API_CONFIG.useVercelApi) {
+    // Vercel serverless: envía a /api/chat, la key está en el servidor
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, context }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(err.error || err.details || `API error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.content ?? '';
+  }
+
+  // Llamada directa (dev con proxy o OpenAI)
   const systemPrompt = buildSystemPrompt(context);
-  const response = await fetch(API_CONFIG.openai.endpoint, {
+  const response = await fetch(API_CONFIG.endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_CONFIG.openai.apiKey}`,
+      'Authorization': `Bearer ${API_CONFIG.apiKey}`,
     },
     body: JSON.stringify({
-      model: API_CONFIG.openai.model,
+      model: API_CONFIG.model,
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages,
@@ -79,7 +116,8 @@ async function sendToOpenAI(messages: ChatMessage[], context?: string): Promise<
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.statusText}`);
+    const errText = await response.text();
+    throw new Error(`${API_CONFIG.provider} API error: ${response.status} - ${errText || response.statusText}`);
   }
 
   const data = await response.json();
@@ -92,19 +130,22 @@ async function sendToOpenAI(messages: ChatMessage[], context?: string): Promise<
  * @param context - Contexto opcional (página + API) para RAG
  */
 export async function sendMessage(messages: ChatMessage[], context?: string): Promise<string> {
-  const apiKey = API_CONFIG.openai.apiKey;
+  const apiKey = API_CONFIG.apiKey;
+  const needsKey = !API_CONFIG.useVercelApi;
 
-  // Modo demo: respuestas simuladas si no hay API key
-  if (!apiKey || apiKey.startsWith('YOUR_')) {
-    console.warn('OpenAI API key no configurada. Usando modo demo.');
+  // En dev necesitamos API key. En Vercel la key está en el servidor.
+  if (needsKey && (!apiKey?.trim() || apiKey.startsWith('YOUR_'))) {
+    console.warn('API key no configurada. En local: VITE_GROQ_API_KEY en .env.local. En Vercel: GROQ_API_KEY en Settings.');
     return simulateAIResponse(messages[messages.length - 1].content);
   }
 
   try {
-    return await sendToOpenAI(messages, context);
+    return await sendToAPI(messages, context);
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
-    return simulateAIResponse(messages[messages.length - 1].content);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`Error calling ${API_CONFIG.provider} API:`, error);
+    // Mostrar el error real en lugar de respuestas simuladas
+    return `Error al conectar con la API: ${errMsg}. Verifica tu API key y la consola del navegador (F12).`;
   }
 }
 
@@ -136,13 +177,12 @@ function simulateAIResponse(userMessage: string): Promise<string> {
  * Información de configuración para mostrar al usuario
  */
 export function getConfigInfo() {
-  const openaiConfigured = !API_CONFIG.openai.apiKey.startsWith('YOUR_');
+  const configured = API_CONFIG.useVercelApi || Boolean(API_CONFIG.apiKey?.trim() && !API_CONFIG.apiKey.startsWith('YOUR_'));
 
   return {
-    openai: {
-      configured: openaiConfigured,
-      model: API_CONFIG.openai.model,
-    },
-    isDemoMode: !openaiConfigured,
+    provider: API_CONFIG.provider,
+    configured,
+    model: API_CONFIG.model,
+    isDemoMode: !configured,
   };
 }

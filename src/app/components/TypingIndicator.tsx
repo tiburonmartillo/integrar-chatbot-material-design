@@ -1,34 +1,44 @@
 import React from 'react';
-import { Avatar } from '@mui/material';
+import { Box, Avatar } from '@mui/material';
 import { Bot } from 'lucide-react';
 
 export function TypingIndicator() {
   return (
-    <div className="flex gap-3 mb-4">
-      <Avatar
-        sx={{
-          bgcolor: 'var(--md-secondary)',
-          width: 40,
-          height: 40,
-        }}
-      >
+    <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+      <Avatar sx={{ bgcolor: 'secondary.main', width: 40, height: 40 }}>
         <Bot size={20} />
       </Avatar>
-      
-      <div className="flex flex-col gap-1">
-        <div
-          className="rounded-2xl px-4 py-3 bg-[var(--md-surface-container-high)] text-[var(--md-on-surface)]"
-          style={{
-            borderRadius: '20px 20px 20px 4px',
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderRadius: '12px 12px 12px 4px',
+            bgcolor: 'background.paper',
+            display: 'flex',
+            gap: 0.5,
+            alignItems: 'center',
+            '@keyframes typingBounce': {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-4px)' },
+            },
+            '& > span': {
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              bgcolor: 'primary.main',
+              animation: 'typingBounce 1s ease-in-out infinite',
+            },
+            '& > span:nth-of-type(2)': { animationDelay: '0.15s' },
+            '& > span:nth-of-type(3)': { animationDelay: '0.3s' },
           }}
         >
-          <div className="flex gap-1 items-center">
-            <div className="w-2 h-2 rounded-full bg-[var(--md-on-surface-variant)] animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 rounded-full bg-[var(--md-on-surface-variant)] animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 rounded-full bg-[var(--md-on-surface-variant)] animate-bounce" style={{ animationDelay: '300ms' }} />
-          </div>
-        </div>
-      </div>
-    </div>
+          <Box component="span" />
+          <Box component="span" />
+          <Box component="span" />
+        </Box>
+      </Box>
+    </Box>
   );
 }

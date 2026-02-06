@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  IconButton, 
+import { ThemeProvider } from '@mui/material/styles';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
   Box,
   Chip,
   Switch,
   FormControlLabel,
   Snackbar,
-  Alert
+  Alert,
 } from '@mui/material';
 import { Bot, Moon, Sun, Info } from 'lucide-react';
+import { createMD3Theme } from '../theme/muiTheme';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { TypingIndicator } from './components/TypingIndicator';
@@ -36,52 +37,10 @@ function App() {
 
   const configInfo = getConfigInfo();
 
-  // Material UI theme siguiendo Material Design 3 - Memoizado para evitar recreación
-  const theme = useMemo(() => createTheme({
-    palette: {
-      mode: darkMode ? 'dark' : 'light',
-      primary: {
-        main: darkMode ? '#AAC7FF' : '#415F91',
-        contrastText: darkMode ? '#0A305F' : '#FFFFFF',
-      },
-      secondary: {
-        main: darkMode ? '#BEC6DC' : '#565F71',
-        contrastText: darkMode ? '#283141' : '#FFFFFF',
-      },
-      background: {
-        default: darkMode ? '#111318' : '#F9F9FF',
-        paper: darkMode ? '#1D2024' : '#FFFFFF',
-      },
-      text: {
-        primary: darkMode ? '#E2E2E9' : '#191C20',
-        secondary: darkMode ? '#C4C6D0' : '#44474E',
-      },
-    },
-    shape: {
-      borderRadius: 12,
-    },
-    typography: {
-      fontFamily: "'Kumbh Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-      h1: {
-        fontFamily: "'Anek Latin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      },
-      h2: {
-        fontFamily: "'Anek Latin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      },
-      h3: {
-        fontFamily: "'Anek Latin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      },
-      h4: {
-        fontFamily: "'Anek Latin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      },
-      h5: {
-        fontFamily: "'Anek Latin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      },
-      h6: {
-        fontFamily: "'Anek Latin', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      },
-    },
-  }), [darkMode]);
+  const theme = useMemo(
+    () => createMD3Theme(darkMode ? 'dark' : 'light'),
+    [darkMode]
+  );
 
   // Auto-scroll al final cuando hay nuevos mensajes
   useEffect(() => {
@@ -155,33 +114,43 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="flex flex-col h-screen bg-[var(--md-background)]">
-        {/* App Bar */}
-        <AppBar 
-          position="static" 
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          bgcolor: 'background.default',
+        }}
+      >
+        <AppBar
+          position="static"
           elevation={0}
-          sx={{ 
-            bgcolor: 'var(--md-surface-container)',
-            color: 'var(--md-on-surface)',
-            borderBottom: '1px solid var(--md-outline-variant)',
+          sx={{
+            flexShrink: 0,
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            borderBottom: 1,
+            borderColor: 'divider',
           }}
         >
           <Toolbar>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-              <Bot size={28} style={{ color: 'var(--md-primary)' }} />
+              <Box component="span" sx={{ color: 'primary.main', display: 'flex' }}>
+              <Bot size={28} />
+            </Box>
               <Typography variant="h6" component="h1">
                 Asistente IA Material Design 3
               </Typography>
             </Box>
 
             {configInfo.isDemoMode && (
-              <Chip 
-                label="Modo Demo" 
-                size="small" 
-                sx={{ 
+              <Chip
+                label="Modo Demo"
+                size="small"
+                sx={{
                   mr: 2,
-                  bgcolor: 'var(--md-tertiary-container)',
-                  color: 'var(--md-on-tertiary-container)',
+                  bgcolor: darkMode ? '#573E5C' : '#FAD8FD',
+                  color: darkMode ? '#FAD8FD' : '#573E5C',
                 }}
               />
             )}
@@ -199,31 +168,31 @@ function App() {
               sx={{ mr: 0 }}
             />
 
-            <IconButton 
-              onClick={() => setShowInfo(true)}
-              sx={{ color: 'var(--md-on-surface-variant)' }}
-            >
+            <IconButton onClick={() => setShowInfo(true)} sx={{ color: 'text.secondary' }}>
               <Info size={20} />
             </IconButton>
           </Toolbar>
         </AppBar>
 
-        {/* Chat Container */}
-        <div 
+        <Box
           ref={chatContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-6"
-          style={{ backgroundColor: 'var(--md-background)' }}
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            px: 2,
+            py: 3,
+            bgcolor: 'background.default',
+          }}
         >
-          <div className="max-w-4xl mx-auto">
+          <Box sx={{ maxWidth: 900, mx: 'auto' }}>
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
             
             {isTyping && <TypingIndicator />}
-            
             <div ref={messagesEndRef} />
-          </div>
-        </div>
+          </Box>
+        </Box>
 
         {/* Input Area */}
         <ChatInput 
@@ -239,30 +208,30 @@ function App() {
           onClose={() => setShowInfo(false)}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
-          <Alert 
-            onClose={() => setShowInfo(false)} 
+          <Alert
+            onClose={() => setShowInfo(false)}
             severity="info"
-            sx={{ 
+            sx={{
               width: '100%',
-              maxWidth: '600px',
-              bgcolor: 'var(--md-surface-container-high)',
-              color: 'var(--md-on-surface)',
+              maxWidth: 600,
+              bgcolor: 'background.paper',
+              color: 'text.primary',
             }}
           >
             {configInfo.isDemoMode ? (
               <>
                 <strong>Modo Demo Activado:</strong> Para conectar con una API de IA real, 
-                configura tu API key en <code>/src/app/utils/aiService.ts</code>. 
+                añade <code>VITE_GROQ_API_KEY</code> o <code>VITE_OPENAI_API_KEY</code> en <code>.env.local</code>. 
                 Actualmente se están usando respuestas simuladas.
               </>
             ) : (
               <>
-                <strong>API Configurada:</strong> Conectado a OpenAI
+                <strong>API Configurada:</strong> Conectado a {configInfo.provider === 'groq' ? 'Groq' : 'OpenAI'}
               </>
             )}
           </Alert>
         </Snackbar>
-      </div>
+      </Box>
     </ThemeProvider>
   );
 }

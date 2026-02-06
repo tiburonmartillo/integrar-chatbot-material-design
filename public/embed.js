@@ -9,7 +9,7 @@
   var container = document.createElement('div');
   container.id = 'chatbot-embed-container';
   container.style.cssText =
-    'position:fixed;bottom:24px;right:24px;z-index:999999;font-family:system-ui,-apple-system,sans-serif;';
+    'position:fixed;bottom:24px;right:24px;z-index:999999;font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:flex-end;gap:12px;';
 
   var iframe = document.createElement('iframe');
   iframe.setAttribute('data-chatbot-iframe', 'true');
@@ -21,7 +21,7 @@
   var button = document.createElement('button');
   button.setAttribute('aria-label', 'Abrir chat');
   button.style.cssText =
-    'width:56px;height:56px;border-radius:50%;border:none;background:#415F91;color:white;cursor:pointer;box-shadow:0 4px 12px rgba(65,95,145,0.4);display:flex;align-items:center;justify-content:center;transition:transform 0.2s;';
+    'width:56px;height:56px;flex-shrink:0;border-radius:16px;border:none;background:#D6E3FF;color:#284777;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;transition:transform 0.2s;';
   button.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 
@@ -33,9 +33,18 @@
   });
 
   var isOpen = false;
-  button.addEventListener('click', function () {
-    isOpen = !isOpen;
+  function setOpen(open) {
+    isOpen = open;
     iframe.style.display = isOpen ? 'block' : 'none';
+    // Ocultar completamente el botón cuando el chat está abierto
+    button.style.display = isOpen ? 'none' : 'flex';
+    button.style.visibility = isOpen ? 'hidden' : 'visible';
+    button.style.pointerEvents = isOpen ? 'none' : 'auto';
+    button.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+    button.setAttribute('aria-label', isOpen ? 'Cerrar chat' : 'Abrir chat');
+  }
+  button.addEventListener('click', function () {
+    setOpen(!isOpen);
   });
 
   container.appendChild(iframe);
@@ -43,6 +52,10 @@
   document.body.appendChild(container);
 
   window.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'CHATBOT_CLOSE') {
+      setOpen(false);
+      return;
+    }
     if (event.data && event.data.type === 'CHATBOT_READY' && iframe.contentWindow) {
       var initData = {
         type: 'INIT',

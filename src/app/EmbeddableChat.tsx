@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { Box, Typography } from '@mui/material';
-import { Bot } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import { Box, Typography, IconButton } from '@mui/material';
+import { Bot, X } from 'lucide-react';
+import { createMD3Theme } from '../theme/muiTheme';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { TypingIndicator } from './components/TypingIndicator';
@@ -27,25 +28,6 @@ export function EmbeddableChat() {
   const [context, setContext] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: 'light',
-          primary: { main: '#415F91', contrastText: '#FFFFFF' },
-          secondary: { main: '#565F71', contrastText: '#FFFFFF' },
-          background: { default: '#F9F9FF', paper: '#FFFFFF' },
-          text: { primary: '#191C20', secondary: '#44474E' },
-        },
-        shape: { borderRadius: 12 },
-        typography: {
-          fontFamily:
-            "'Kumbh Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        },
-      }),
-    []
-  );
-
   useEffect(() => {
     initContextListener();
     notifyChatbotReady();
@@ -63,6 +45,12 @@ export function EmbeddableChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  const handleClose = () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'CHATBOT_CLOSE' }, '*');
+    }
+  };
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -105,37 +93,72 @@ export function EmbeddableChat() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <div className="flex flex-col h-full bg-[var(--md-background)]">
+    <ThemeProvider theme={createMD3Theme('light')}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          minHeight: 0,
+          bgcolor: 'background.default',
+        }}
+      >
         <Box
+          component="header"
           sx={{
+            flexShrink: 0,
             py: 1.5,
             px: 2,
-            borderBottom: '1px solid var(--md-outline-variant)',
-            bgcolor: 'var(--md-surface-container)',
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 1,
           }}
         >
-          <Bot size={24} style={{ color: 'var(--md-primary)' }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--md-on-surface)' }}>
-            Asistente
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box component="span" sx={{ color: 'primary.main', display: 'flex' }}>
+              <Bot size={24} />
+            </Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              Asistente
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={handleClose}
+            aria-label="Cerrar chat"
+            size="small"
+            sx={{ color: 'text.secondary' }}
+          >
+            <X size={20} />
+          </IconButton>
         </Box>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4" style={{ backgroundColor: 'var(--md-background)' }}>
-          <div className="max-w-2xl mx-auto">
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            px: 2,
+            py: 2,
+            bgcolor: 'background.default',
+          }}
+        >
+          <Box sx={{ maxWidth: 672, mx: 'auto' }}>
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
             {isTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />
-          </div>
-        </div>
+          </Box>
+        </Box>
 
-        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} loading={isTyping} />
-      </div>
+        <Box sx={{ flexShrink: 0 }}>
+          <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} loading={isTyping} />
+        </Box>
+      </Box>
     </ThemeProvider>
   );
 }
